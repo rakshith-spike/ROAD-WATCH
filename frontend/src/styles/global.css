@@ -1,0 +1,63 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply m-0 font-body text-slate-800 antialiased;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer components {
+  .app-background {
+    @apply min-h-screen bg-slate-100 bg-aurora-light transition-colors duration-300;
+  }
+
+  .dark .app-background {
+    @apply bg-ink-900 bg-aurora-dark text-slate-100;
+  }
+
+  .glass-panel {
+    @apply rounded-2xl border border-white/40 bg-white/65 p-5 shadow-glass backdrop-blur-xl;
+  }
+
+  .dark .glass-panel {
+    @apply border-white/10 bg-white/5;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200/70 hover:text-slate-900;
+  }
+
+  .dark .sidebar-link {
+    @apply text-slate-300 hover:bg-white/10 hover:text-white;
+  }
+
+  .sidebar-link.active {
+    @apply bg-ink-900 text-white;
+  }
+
+  .dark .sidebar-link.active {
+    @apply bg-mint-600 text-slate-950;
+  }
+
+  .shimmer {
+    @apply relative overflow-hidden rounded-xl bg-slate-200;
+  }
+
+  .dark .shimmer {
+    @apply bg-slate-800;
+  }
+
+  .shimmer::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent;
+    animation: shimmer 1.5s infinite;
+  }
+}
