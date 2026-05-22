@@ -17,9 +17,17 @@ export function AuthProvider({ children }) {
 
   const [authLoading, setAuthLoading] = useState(false);
 
+  const DEMO_USER = { id: "demo-001", full_name: "Demo Admin", email: "demo@roadwatch.city", role: "government_admin" };
+
   async function login(payload) {
     setAuthLoading(true);
     try {
+      // Demo bypass: accept demo@roadwatch.city / demo123
+      if (payload.email === "demo@roadwatch.city" && payload.password === "demo123") {
+        localStorage.setItem("rw_user", JSON.stringify(DEMO_USER));
+        setUser(DEMO_USER);
+        return DEMO_USER;
+      }
       const result = await api.login(payload);
       localStorage.setItem("rw_access_token", result.tokens.access_token);
       localStorage.setItem("rw_refresh_token", result.tokens.refresh_token);

@@ -19,12 +19,13 @@ export function AuthCard({ defaultMode = "login", onSuccess = null }) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event, isDemo = false) {
     event.preventDefault();
     try {
-      if (mode === "login") {
-        const user = await login({ email: form.email, password: form.password });
-        toast.success("Logged in successfully");
+      if (isDemo || mode === "login") {
+        const credentials = isDemo ? { email: "demo@roadwatch.city", password: "demo123" } : { email: form.email, password: form.password };
+        const user = await login(credentials);
+        toast.success(isDemo ? "Demo mode — all features active" : "Logged in successfully");
         onSuccess?.(user, "login");
       } else {
         const user = await signup(form);
@@ -33,7 +34,11 @@ export function AuthCard({ defaultMode = "login", onSuccess = null }) {
       }
       setForm(DEFAULT_FORM);
     } catch (err) {
-      toast.error(`Auth failed: ${err.message}`);
+      if (!isDemo) toast.error(`Auth failed: ${err.message}`);
+      else {
+        // If demo fails (shouldn't), just set user directly
+        toast.error("Demo login failed. Check AuthProvider.");
+      }
     }
   }
 
@@ -65,6 +70,16 @@ export function AuthCard({ defaultMode = "login", onSuccess = null }) {
       <button type="submit" disabled={authLoading} className="mt-3 rounded-xl bg-ink-900 px-4 py-2 text-sm font-semibold text-white dark:bg-mint-600 dark:text-slate-950">
         {authLoading ? "Please wait..." : mode === "login" ? "Login" : "Create account"}
       </button>
+      {mode === "login" && (
+        <button
+          type="button"
+          disabled={authLoading}
+          onClick={() => handleSubmit({ preventDefault: () => {} }, true)}
+          className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+        >
+          ⚡ Demo Login (no backend needed)
+        </button>
+      )}
     </form>
   );
 }

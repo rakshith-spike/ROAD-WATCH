@@ -21,7 +21,13 @@ async function request(url, options = {}) {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Request failed: ${response.status}`);
+    try {
+      const body = JSON.parse(text);
+      throw new Error(body.detail || `Request failed: ${response.status}`);
+    } catch (error) {
+      if (error.message && error.message !== text) throw error;
+      throw new Error(text || `Request failed: ${response.status}`);
+    }
   }
 
   if (response.status === 204) return null;
@@ -59,9 +65,11 @@ export const api = {
   updateRoad:  (roadId, payload) => patch(`${V1}/roads/${roadId}`, payload),
 
   // Complaints
-  getComplaints:   ()        => request(`${V1}/complaints`),
-  createComplaint: (payload) => post(`${V1}/complaints`, payload),
-  triggerSos:      ()        => request(`${V1}/complaints/sos/emergency`),
+  getComplaints:        ()        => request(`${V1}/complaints`),
+  createComplaint:      (payload) => post(`${V1}/complaints`, payload),
+  updateComplaint:      (id, payload) => patch(`${V1}/complaints/${id}`, payload),
+  getComplaintInsights: ()        => request(`${V1}/complaints/intelligence/summary`),
+  triggerSos:           ()        => request(`${V1}/complaints/sos/emergency`),
 
   // Analytics
   getSummary:       () => request(`${V1}/analytics/summary`),
@@ -72,6 +80,7 @@ export const api = {
   // AI
   askAi:        (payload)  => post(`${V1}/ai/chat`, payload),
   analyzeImage: (formData) => request(`${V1}/ai/analyze-image`, { method: "POST", body: formData }),
+  smartComplaintDraft: (formData) => request(`${V1}/ai/smart-complaint-draft`, { method: "POST", body: formData }),
 
   // Alerts
   getAlerts: () => request(`${V1}/alerts`),

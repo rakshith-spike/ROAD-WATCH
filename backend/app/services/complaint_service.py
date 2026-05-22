@@ -19,8 +19,9 @@ class ComplaintService:
         priority: str | None,
         page: int,
         page_size: int,
+        user_id: str | None = None,
     ) -> tuple[list[dict], int]:
-        return await self.complaint_repo.list_complaints(status, priority, page, page_size)
+        return await self.complaint_repo.list_complaints(status, priority, page, page_size, user_id)
 
     async def create_complaint(self, payload: dict) -> dict:
         road = await self.road_repo.get_by_id(payload["road_id"])

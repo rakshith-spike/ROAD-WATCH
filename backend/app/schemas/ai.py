@@ -11,6 +11,7 @@ class ChatResponse(BaseModel):
     answer: str
     sources: list[str]
     mode: str
+    suggestions: list[str] = Field(default_factory=list)
 
 
 class ImageAnalysisResponse(BaseModel):
@@ -20,6 +21,38 @@ class ImageAnalysisResponse(BaseModel):
     suggested_action: str
     summary: str
     mode: str
+
+
+class GeoLocationDraft(BaseModel):
+    latitude: float | None = None
+    longitude: float | None = None
+    geo_coordinates: str
+    place_name: str
+    area: str
+    ward_name: str
+    road_name: str
+    district: str
+    city: str
+    state: str
+
+
+class ComplaintMetadataDraft(BaseModel):
+    date: str
+    time: str
+    timestamp: str
+
+
+class SmartComplaintDraftResponse(BaseModel):
+    road_id: str
+    complaint_type: str
+    severity: str
+    confidence: float
+    priority: str
+    recommended_action: str
+    generated_description: str
+    location: GeoLocationDraft
+    metadata: ComplaintMetadataDraft
+    ai_mode: str
 
 
 class RiskScoringResponse(BaseModel):

@@ -13,12 +13,15 @@ class ComplaintRepository:
         priority: str | None = None,
         page: int = 1,
         page_size: int = 50,
+        user_id: str | None = None,
     ) -> tuple[list[dict], int]:
         query: dict = {}
         if status:
             query["status"] = status
         if priority:
             query["ai_priority"] = priority
+        if user_id:
+            query["user_id"] = user_id
 
         skip, limit = pagination_skip_limit(page, page_size)
         cursor = self.collection.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit)

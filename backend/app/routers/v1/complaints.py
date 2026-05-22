@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
+from app.auth.dependencies import CurrentUser
 from app.schemas.common import PaginationMeta
 from app.schemas.complaints import Complaint, ComplaintCreate
 from app.services.complaint_service import ComplaintService
@@ -20,6 +21,19 @@ async def list_complaints(
     return [Complaint(**item) for item in complaints]
 
 
+@router.get("/mine", response_model=list[Complaint])
+async def list_my_complaints(
+    current_user: CurrentUser,
+    status: str | None = None,
+    priority: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=200),
+    service: ComplaintService = Depends(get_complaint_service),
+) -> list[Complaint]:
+    complaints, _ = await service.list_complaints(status, priority, page, page_size, current_user["id"])
+    return [Complaint(**item) for item in complaints]
+
+
 @router.get("/paged")
 async def list_complaints_paged(
     status: str | None = None,
@@ -35,9 +49,12 @@ async def list_complaints_paged(
 @router.post("", response_model=Complaint, status_code=201)
 async def create_complaint(
     payload: ComplaintCreate,
+    current_user: CurrentUser,
     service: ComplaintService = Depends(get_complaint_service),
 ) -> Complaint:
-    complaint = await service.create_complaint(payload.model_dump())
+    data = payload.model_dump()
+    data["user_id"] = current_user["id"]
+    complaint = await service.create_complaint(data)
     return Complaint(**complaint)
 
 
