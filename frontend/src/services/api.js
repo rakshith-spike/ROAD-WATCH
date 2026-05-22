@@ -87,4 +87,10 @@ export const api = {
   // Geospatial
   getNearbyIssues: (lat, lng, radiusKm = 3) =>
     request(`${V1}/geospatial/nearby-issues?lat=${lat}&lng=${lng}&radius_km=${radiusKm}`),
+
+  // Intelligence mock APIs (backend-powered demo data)
+  getIntelligenceSnapshot: (limit = 120) => request(`${V1}/intelligence/snapshot?limit=${limit}`),
+  getIntelligenceRoads: (limit = 120) => request(`${V1}/intelligence/roads?limit=${limit}`),
+  getIntelligenceAlerts: ({ limit = 90, severity = "" } = {}) =>
+    request(`${V1}/intelligence/alerts?limit=${limit}${severity ? `&severity=${encodeURIComponent(severity)}` : ""}`),
 };

@@ -12,7 +12,7 @@ from app.database.seed import seed_database_if_empty
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 from app.routers import legacy
-from app.routers.v1 import admin, ai, alerts, analytics, auth, complaints, contractors, cv, geospatial, health, roads
+from app.routers.v1 import admin, ai, alerts, analytics, auth, complaints, contractors, cv, geospatial, health, intelligence, roads
 
 settings = get_settings()
 
@@ -60,6 +60,7 @@ app.include_router(contractors.router, prefix=v1_prefix)
 app.include_router(admin.router, prefix=v1_prefix)
 app.include_router(geospatial.router, prefix=v1_prefix)
 app.include_router(cv.router, prefix=v1_prefix)
+app.include_router(intelligence.router, prefix=v1_prefix)
 
 app.include_router(legacy.router)
 

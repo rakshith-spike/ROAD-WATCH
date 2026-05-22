@@ -1,125 +1,171 @@
-import { useMemo, useState } from "react";
-import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer } from "react-leaflet";
+import { useMemo } from "react";
+import { Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 
-const STATUS_COLOR = {
-  good: "#29d8b0",
-  moderate: "#f7bf45",
+const CONDITION_COLOR = {
+  good: "#31d49f",
+  moderate: "#f4c14f",
   critical: "#f75546",
-  construction: "#7f8ea3",
+  under_construction: "#f68f3c",
 };
 
-const hazardIcon = new L.DivIcon({
-  className: "",
-  html: '<div style="background:#f75546;color:white;border-radius:999px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid white;">!</div>',
+const criticalIcon = new L.DivIcon({
+  className: "critical-pulse-icon",
+  html: '<div class="critical-pulse-dot">!</div>',
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+});
+
+const userIcon = new L.DivIcon({
+  className: "user-pulse-icon",
+  html: '<div class="user-pulse-dot"></div>',
   iconSize: [28, 28],
   iconAnchor: [14, 14],
 });
 
-const userIcon = new L.DivIcon({
-  className: "",
-  html: '<div style="background:#2463eb;border-radius:999px;width:20px;height:20px;border:3px solid white;"></div>',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
-});
+function FlyToUserLocation({ userLocation }) {
+  const map = useMap();
+  if (userLocation) {
+    map.flyTo([userLocation.lat, userLocation.lng], 14, {
+      animate: true,
+      duration: 1.2,
+    });
+  }
+  return null;
+}
 
-function buildClusters(roads) {
+function buildMarkerClusters(roads) {
   const buckets = new Map();
   roads.forEach((road) => {
-    const lat = road.center.lat;
-    const lng = road.center.lng;
-    const key = `${lat.toFixed(2)}_${lng.toFixed(2)}`;
-    const current = buckets.get(key);
-    if (current) {
-      current.count += 1;
-      current.roads.push(road.name);
-      current.lat = (current.lat + lat) / 2;
-      current.lng = (current.lng + lng) / 2;
-    } else {
-      buckets.set(key, { lat, lng, count: 1, roads: [road.name] });
+    const key = `${road.latitude.toFixed(2)}_${road.longitude.toFixed(2)}`;
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        lat: road.latitude,
+        lng: road.longitude,
+        count: 0,
+        roads: [],
+        maxSeverity: 0,
+      });
     }
+    const bucket = buckets.get(key);
+    bucket.count += 1;
+    bucket.maxSeverity = Math.max(bucket.maxSeverity, road.severityScore);
+    bucket.roads.push(road.roadName);
   });
-
   return [...buckets.values()].filter((item) => item.count > 1);
 }
 
-export function SmartCityMap({ roads, selectedRoad, onSelectRoad, nearbyIssues }) {
-  const [userLocation, setUserLocation] = useState(null);
-  const [locationMsg, setLocationMsg] = useState("");
-
-  const clusters = useMemo(() => buildClusters(roads), [roads]);
-
-  function locateMe() {
-    if (!navigator.geolocation) {
-      setLocationMsg("Geolocation not supported.");
-      return;
-    }
-    setLocationMsg("Locating...");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setLocationMsg("Location captured.");
-      },
-      () => setLocationMsg("Location permission denied."),
-      { enableHighAccuracy: true, timeout: 12000 },
-    );
+function getTileUrl(layerMode) {
+  if (layerMode === "satellite") {
+    return "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png";
   }
+  if (layerMode === "traffic") {
+    return "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
+  }
+  if (layerMode === "weather") {
+    return "https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png";
+  }
+  return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+}
+
+export function SmartCityMap({
+  roads,
+  wards,
+  selectedRoad,
+  onSelectRoad,
+  userLocation,
+  nearbyRoads,
+  layerMode,
+  showWardOverlay,
+  showHeatmap,
+}) {
+  const clusters = useMemo(() => buildMarkerClusters(roads), [roads]);
 
   return (
     <div className="glass-panel">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-white">Smart GIS Road Monitoring</h3>
-        <button
-          type="button"
-          onClick={locateMe}
-          className="rounded-xl bg-ink-900 px-3 py-2 text-sm font-semibold text-white dark:bg-mint-600 dark:text-slate-950"
-        >
-          Live Geolocation
-        </button>
-      </div>
-
-      <MapContainer center={[12.9716, 77.5946]} zoom={12} className="h-[560px] rounded-2xl">
+      <MapContainer center={[12.9716, 77.5946]} zoom={12} className="h-[630px] rounded-2xl">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url={getTileUrl(layerMode)}
         />
+
+        <FlyToUserLocation userLocation={userLocation} />
+
+        {showWardOverlay
+          ? wards.map((ward) => (
+              <Polygon
+                key={ward.ward}
+                positions={ward.boundary}
+                pathOptions={{
+                  color: "#68d6bf",
+                  weight: 1,
+                  fillOpacity: 0.05,
+                }}
+              >
+                <Popup>
+                  <strong>{ward.ward}</strong>
+                  <br />
+                  Zone: {ward.zone}
+                </Popup>
+              </Polygon>
+            ))
+          : null}
 
         {roads.map((road) => (
           <Polyline
-            key={road.id}
-            positions={road.coordinates.map((point) => [point.lat, point.lng])}
-            pathOptions={{ color: STATUS_COLOR[road.status], weight: selectedRoad?.id === road.id ? 10 : 6, opacity: 0.85 }}
+            key={`line-${road.roadId}`}
+            positions={road.coordinates}
+            pathOptions={{
+              color: CONDITION_COLOR[road.roadCondition],
+              weight: selectedRoad?.roadId === road.roadId ? 9 : 5,
+              opacity: 0.9,
+            }}
             eventHandlers={{ click: () => onSelectRoad(road) }}
           />
         ))}
 
-        {roads.map((road) => (
-          <Circle
-            key={`${road.id}-heat`}
-            center={[road.center.lat, road.center.lng]}
-            pathOptions={{
-              color: "transparent",
-              fillColor: STATUS_COLOR[road.status],
-              fillOpacity: road.status === "critical" ? 0.25 : 0.13,
-            }}
-            radius={road.status === "critical" ? 450 : 270}
-          />
-        ))}
+        {showHeatmap
+          ? roads.map((road) => (
+              <Circle
+                key={`heat-${road.roadId}`}
+                center={[road.latitude, road.longitude]}
+                radius={road.severityScore * 7 + 110}
+                pathOptions={{
+                  color: "transparent",
+                  fillColor: CONDITION_COLOR[road.roadCondition],
+                  fillOpacity: road.roadCondition === "critical" ? 0.26 : 0.14,
+                }}
+              />
+            ))
+          : null}
 
         {roads.map((road) => (
           <CircleMarker
-            key={`${road.id}-point`}
-            center={[road.center.lat, road.center.lng]}
-            radius={selectedRoad?.id === road.id ? 8 : 5}
-            pathOptions={{ color: "#fff", fillColor: STATUS_COLOR[road.status], fillOpacity: 1, weight: 2 }}
+            key={road.roadId}
+            center={[road.latitude, road.longitude]}
+            radius={selectedRoad?.roadId === road.roadId ? 8 : 5.5}
+            pathOptions={{
+              color: "#fff",
+              fillColor: CONDITION_COLOR[road.roadCondition],
+              fillOpacity: 1,
+              weight: 2,
+            }}
             eventHandlers={{ click: () => onSelectRoad(road) }}
           >
-            <Popup>
-              <strong>{road.name}</strong>
-              <br />
-              Score: {road.quality_score}/100
-              <br />
-              Complaints: {road.complaints}
+            <Popup className="road-popup">
+              <div style={{fontFamily:"system-ui,sans-serif",minWidth:"180px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"6px"}}>
+                  <div style={{width:"8px",height:"8px",borderRadius:"50%",background:CONDITION_COLOR[road.roadCondition],boxShadow:`0 0 6px ${CONDITION_COLOR[road.roadCondition]}`}} />
+                  <p style={{margin:0,fontWeight:700,fontSize:"12px",color:"#0f172a"}}>{road.roadName}</p>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px",fontSize:"10px",color:"#64748b"}}>
+                  <span>Ward: <b style={{color:"#334155"}}>{road.ward}</b></span>
+                  <span>Score: <b style={{color:road.severityScore>70?"#ef4444":road.severityScore>40?"#f59e0b":"#10b981"}}>{road.severityScore}/100</b></span>
+                  <span>Priority: <b style={{color:"#334155"}}>{road.maintenancePriority}</b></span>
+                  <span>Risk: <b style={{color:"#334155"}}>{road.predictedFailureRisk}</b></span>
+                </div>
+                <div style={{marginTop:"6px",padding:"4px 8px",background:"#f8fafc",borderRadius:"6px",fontSize:"10px",color:"#64748b"}}>{road.contractorName}</div>
+              </div>
             </Popup>
           </CircleMarker>
         ))}
@@ -129,28 +175,39 @@ export function SmartCityMap({ roads, selectedRoad, onSelectRoad, nearbyIssues }
             key={`cluster-${idx}`}
             center={[cluster.lat, cluster.lng]}
             radius={10 + cluster.count}
-            pathOptions={{ color: "#1d4ed8", fillColor: "#60a5fa", fillOpacity: 0.7, weight: 2 }}
+            pathOptions={{
+              color: cluster.maxSeverity > 80 ? "#f75546" : "#2563eb",
+              fillColor: cluster.maxSeverity > 80 ? "#ff9588" : "#60a5fa",
+              fillOpacity: 0.72,
+              weight: 2,
+            }}
           >
             <Popup>
-              <strong>{cluster.count} nearby issue clusters</strong>
-              <br />
-              {cluster.roads.join(", ")}
+              <p className="text-sm font-semibold">{cluster.count} roads clustered</p>
+              <p className="text-xs">Peak severity: {cluster.maxSeverity}</p>
+              <p className="text-xs">{cluster.roads.slice(0, 4).join(", ")}</p>
             </Popup>
           </CircleMarker>
         ))}
 
-        {selectedRoad ? <Marker position={[selectedRoad.center.lat, selectedRoad.center.lng]} icon={hazardIcon} /> : null}
+        {roads
+          .filter((road) => road.roadCondition === "critical" && road.severityScore >= 85)
+          .slice(0, 20)
+          .map((road) => (
+            <Marker key={`critical-${road.roadId}`} position={[road.latitude, road.longitude]} icon={criticalIcon} />
+          ))}
+
         {userLocation ? <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon} /> : null}
+
+        {nearbyRoads.slice(0, 5).map((road) => (
+          <Circle
+            key={`nearby-${road.roadId}`}
+            center={[road.latitude, road.longitude]}
+            radius={95}
+            pathOptions={{ color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.22 }}
+          />
+        ))}
       </MapContainer>
-
-      <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{locationMsg || "Filter by severity and monitor emerging zones."}</p>
-
-      {nearbyIssues.length > 0 ? (
-        <div className="mt-3 rounded-xl border border-slate-200 p-3 text-sm dark:border-white/10">
-          <p className="font-semibold text-slate-900 dark:text-white">Nearby issue detection</p>
-          <p className="mt-1 text-slate-600 dark:text-slate-300">{nearbyIssues[0].name} is {nearbyIssues[0].distance_km} km from your selected point.</p>
-        </div>
-      ) : null}
     </div>
   );
 }
