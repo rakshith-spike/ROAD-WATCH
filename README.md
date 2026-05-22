@@ -1,6 +1,6 @@
-# RoadWatch 2.0 - AI Road Intelligence & Public Safety Platform
+# RoadWatch  - AI Road Intelligence & Public Safety Platform
 
-RoadWatch 2.0 is a production-structured smart-city platform for road condition intelligence, citizen reporting, contractor accountability, and governance analytics.
+RoadWatch is a production-structured smart-city platform for road condition intelligence, citizen reporting, contractor accountability, and governance analytics.
 
 It is designed to impress:
 - Hackathon judges
